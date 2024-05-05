@@ -215,6 +215,7 @@ func (am AppModule) EndBlock(ctx sdk.Context, _ abci.RequestEndBlock) []abci.Val
 
 	logger.Info("prepare for next oracle round of each tokenFeeder")
 	agc.PrepareRound(ctx, 0)
+	keeper.ResetAggregatorContextCheckTx()
 
 	cs.CommitCache(ctx, false, am.keeper)
 	return []abci.ValidatorUpdate{}
