@@ -167,6 +167,7 @@ func (am AppModule) EndBlock(ctx sdk.Context, _ abci.RequestEndBlock) []abci.Val
 			validator, _ := am.keeper.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(pubKey))
 			validatorList[validator.OperatorAddress] = big.NewInt(vu.Power)
 		}
+		cs.AddCache(cache.ItemV(validatorList))
 		validatorPowers := make(map[string]*big.Int)
 		cs.GetCache(cache.ItemV(validatorPowers))
 		// update validatorPowerList in aggregatorContext
@@ -213,6 +214,7 @@ func (am AppModule) EndBlock(ctx sdk.Context, _ abci.RequestEndBlock) []abci.Val
 
 	logger.Info("prepare for next oracle round of each tokenFeeder")
 	agc.PrepareRound(ctx, 0)
+	keeper.ResetAggregatorContextCheckTx()
 
 	cs.CommitCache(ctx, true, am.keeper)
 	return []abci.ValidatorUpdate{}

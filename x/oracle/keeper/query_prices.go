@@ -54,3 +54,21 @@ func (k Keeper) Prices(goCtx context.Context, req *types.QueryGetPricesRequest) 
 
 	return &types.QueryGetPricesResponse{Prices: val}, nil
 }
+
+// TODO: LatestPrice(tokenID)
+// func (k Keeper) LatestPrice(goCtx context.Context, req *types.QueryGetPricesRequest) (*types.QueryGetPricesResponse, error) {
+//	if req == nil {
+//		return nil, status.Error(codes.InvalidArgument, "invalid request")
+//	}
+//	ctx := sdk.UnwrapSDKContext(goCtx)
+//
+//	val, found := k.GetPrices(
+//		ctx,
+//		req.TokenId,
+//	)
+//	if !found {
+//		return nil, status.Error(codes.NotFound, "not found")
+//	}
+//
+//	return &types.QueryGetPricesResponse{Prices: val}, nil
+// }

@@ -94,6 +94,7 @@ func (k Keeper) GetAllPrices(ctx sdk.Context) (list []types.Prices) {
 func (k Keeper) AppendPriceTR(ctx sdk.Context, tokenID uint64, priceTR types.PriceTimeRound) {
 	nextRoundID := k.GetNextRoundID(ctx, tokenID)
 	if nextRoundID != priceTR.RoundID {
+		// TODO: return with panic to tell this round adding fail
 		return
 	}
 	store := k.getPriceTRStore(ctx, tokenID)

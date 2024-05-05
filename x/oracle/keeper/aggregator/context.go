@@ -42,6 +42,35 @@ type AggregatorContext struct {
 	aggregators map[uint64]*worker
 }
 
+func (agc *AggregatorContext) Copy4ChekTx() *AggregatorContext {
+	ret := &AggregatorContext{
+		// params, validatorsPower, totalPower, these values won't change during block executing
+		params:          agc.params,
+		validatorsPower: agc.validatorsPower,
+		totalPower:      agc.totalPower,
+
+		rounds:      make(map[uint64]*roundInfo),
+		aggregators: make(map[uint64]*worker),
+	}
+
+	for k, v := range agc.rounds {
+		vTmp := *v
+		ret.rounds[k] = &vTmp
+	}
+
+	for k, v := range agc.aggregators {
+		w := newWorker(k, ret)
+		w.sealed = v.sealed
+		w.price = v.price
+
+		w.f = v.f.copy4CheckTx()
+		w.c = v.c.copy4CheckTx()
+		w.a = v.a.copy4CheckTx()
+	}
+
+	return ret
+}
+
 func (agc *AggregatorContext) sanityCheck(msg *types.MsgCreatePrice) error {
 	// sanity check
 	// TODO: check nonce [1,3] in anteHandler, related to params, may not able
@@ -141,7 +170,7 @@ func (agc *AggregatorContext) FillPrice(msg *types.MsgCreatePrice) (*PriceItemKV
 
 // NewCreatePrice receives msgCreatePrice message, and goes process: filter->aggregator, filter->calculator->aggregator
 // non-deterministic data will goes directly into aggregator, and deterministic data will goes into calculator first to get consensus on the deterministic id.
-func (agc *AggregatorContext) NewCreatePrice(_ sdk.Context, msg *types.MsgCreatePrice) (*PriceItemKV, *cache.ItemM, error) {
+func (agc *AggregatorContext) NewCreatePrice(ctx sdk.Context, msg *types.MsgCreatePrice) (*PriceItemKV, *cache.ItemM, error) {
 	if err := agc.checkMsg(msg); err != nil {
 		return nil, nil, types.ErrInvalidMsg.Wrap(err.Error())
 	}
@@ -182,7 +211,9 @@ func (agc *AggregatorContext) SealRound(ctx sdk.Context, force bool) (success []
 		}
 		// all status: 1->2, remove its aggregator
 		if agc.aggregators[feederID] != nil && agc.aggregators[feederID].sealed {
-			agc.aggregators[feederID] = nil
+			// agc.aggregators[feederID] = nil
+			//			agc.aggregators[feederID] = nil
+			delete(agc.aggregators, feederID)
 		}
 	}
 	return success, failed
@@ -229,7 +260,8 @@ func (agc *AggregatorContext) PrepareRound(ctx sdk.Context, block uint64) {
 				round.nextRoundID = latestNextRoundID
 				round.status = 1
 				// drop previous worker
-				agc.aggregators[feederIDUint64] = nil
+				// agc.aggregators[feederIDUint64] = nil
+				delete(agc.aggregators, feederIDUint64)
 			} else if round.status == 1 && left >= common.MaxNonce {
 				// this shouldn't happen, if do sealround properly before prepareRound, basically for test only
 				round.status = 2
