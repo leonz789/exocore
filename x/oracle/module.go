@@ -154,11 +154,13 @@ func (am AppModule) BeginBlock(_ sdk.Context, _ abci.RequestBeginBlock) {}
 
 // EndBlock contains the logic that is automatically triggered at the end of each block
 func (am AppModule) EndBlock(ctx sdk.Context, _ abci.RequestEndBlock) []abci.ValidatorUpdate {
+	fmt.Println("debug-oracle-EndBlock")
 	cs := keeper.GetCaches()
 	validatorUpdates := am.keeper.GetValidatorUpdates(ctx)
 	forceSeal := false
 	agc := keeper.GetAggregatorContext(ctx, am.keeper)
 
+	fmt.Println("debug-oracle-EndBlock: GetAggregatorContext success")
 	logger := am.keeper.Logger(ctx)
 	if len(validatorUpdates) > 0 {
 		validatorList := make(map[string]*big.Int)

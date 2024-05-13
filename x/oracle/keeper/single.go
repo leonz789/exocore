@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ExocoreNetwork/exocore/x/oracle/keeper/aggregator"
@@ -25,7 +26,9 @@ func GetCaches() *cache.Cache {
 
 // GetAggregatorContext returns singleton aggregatorContext used to calculate final price for each round of each tokenFeeder
 func GetAggregatorContext(ctx sdk.Context, k Keeper) *aggregator.AggregatorContext {
+	fmt.Println("debug-oracle-GetAggregatorContext")
 	if agc != nil {
+		fmt.Println("debug-oracle-GetAggregatorContext: return existed agc")
 		return agc
 	}
 
@@ -35,10 +38,13 @@ func GetAggregatorContext(ctx sdk.Context, k Keeper) *aggregator.AggregatorConte
 	if ok := recacheAggregatorContext(ctx, agc, k, c); !ok {
 		// this is the very first time oracle has been started, fill relalted info as initialization
 		initAggregatorContext(ctx, agc, k, c)
+		fmt.Println("debug-oracle-GetAggregatorContext: return initialized agc")
 	} else {
 		// this is when a node restart and use the persistent state to refill cache, we don't need to commit these data again
 		c.SkipCommit()
+		fmt.Println("debug-oracle-GetAggregatorContext: return recached agc")
 	}
+	fmt.Println("debug-oracle-GetAggregatorContext")
 	return agc
 }
 
@@ -77,6 +83,7 @@ func recacheAggregatorContext(ctx sdk.Context, agc *aggregator.AggregatorContext
 
 	recentMsgs := k.GetAllRecentMsgAsMap(ctx)
 	var pTmp common.Params
+	fmt.Println("debug-recacheAggregatorContext:from,to", from, to)
 	for ; from < to; from++ {
 		// fill params
 		prev := int64(0)
