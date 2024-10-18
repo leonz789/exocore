@@ -21,7 +21,26 @@ import (
 // msg(refund or slash on beaconChain): update staker's price, operator's price
 
 const (
-	NSTETHASSETID = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x65"
+	// TODO: we currently support NSTETH only which has capped effective balance for one validator
+	// TODO: this is a bad practice, and for Lz, they have different version of endpoint with different chainID
+	// Do the validation before invoke oracle ralted functions instead of check these hard code ids here.
+	NSTETHAssetIDMainnet = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x65"
+	NSTETHAssetIDHolesky = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x9d19"
+	NSTETHAssetIDSepolia = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x9ce1"
+)
+
+var (
+	limitedChangeNST = []string{
+		NSTETHAssetIDMainnet,
+		NSTETHAssetIDHolesky,
+		NSTETHAssetIDSepolia,
+	}
+
+	maxEffectiveBalance = map[string]int{
+		NSTETHAssetIDMainnet: 32,
+		NSTETHAssetIDHolesky: 32,
+		NSTETHAssetIDSepolia: 32,
+	}
 )
 
 // SetStakerInfos set stakerInfos for the specific assetID
@@ -31,10 +50,6 @@ func (k Keeper) SetStakerInfos(ctx sdk.Context, assetID string, stakerInfos []*t
 		bz := k.cdc.MustMarshal(stakerInfo)
 		store.Set(types.NativeTokenStakerKey(assetID, stakerInfo.StakerAddr), bz)
 	}
-}
-
-var maxEffectiveBalance = map[string]int{
-	NSTETHASSETID: 32,
 }
 
 // GetStakerInfo returns details about staker for native-restaking under asset of assetID
@@ -133,6 +148,14 @@ func (k Keeper) GetAllStakerListAssets(ctx sdk.Context) (ret []types.StakerListA
 }
 
 func (k Keeper) UpdateNSTValidatorListForStaker(ctx sdk.Context, assetID, stakerAddr, validatorPubkey string, amount sdkmath.Int) error {
+	if !IsLimitedChangeNST(assetID) {
+		return types.ErrNSTAssetNotSurpported
+	}
+	_, decimalInt, err := k.getDecimal(ctx, assetID)
+	if err != nil {
+		return err
+	}
+	amountInt64 := amount.Quo(decimalInt).Int64()
 	// emit an event to tell that a staker's validator list has changed
 	ctx.EventManager().EmitEvent(sdk.NewEvent(
 		types.EventTypeCreatePrice,
@@ -146,7 +169,7 @@ func (k Keeper) UpdateNSTValidatorListForStaker(ctx sdk.Context, assetID, staker
 		stakerInfo = types.NewStakerInfo(stakerAddr, validatorPubkey)
 	} else {
 		k.cdc.MustUnmarshal(value, stakerInfo)
-		if amount.IsPositive() {
+		if amountInt64 > 0 {
 			// deopsit add a new validator into staker's validatorList
 			stakerInfo.ValidatorPubkeyList = append(stakerInfo.ValidatorPubkeyList, validatorPubkey)
 		}
@@ -159,7 +182,7 @@ func (k Keeper) UpdateNSTValidatorListForStaker(ctx sdk.Context, assetID, staker
 		newBalance.Index++
 	}
 	newBalance.Block = uint64(ctx.BlockHeight())
-	if amount.IsPositive() {
+	if amountInt64 > 0 {
 		newBalance.Change = types.Action_ACTION_DEPOSIT
 	} else {
 		// TODO: check if this validator has withdraw all its asset and then we can move it out from the staker's validatorList
@@ -174,19 +197,7 @@ func (k Keeper) UpdateNSTValidatorListForStaker(ctx sdk.Context, assetID, staker
 		}
 	}
 
-	decimal, decimalInt, err := k.getDecimal(ctx, assetID)
-	if err != nil {
-		return err
-	}
-
-	// the amount should be checked by caller
-	// in case of nstETH, deposit should be equal to 32e18 as the maxeffectivebalance
-	efbUnit := sdkmath.NewIntWithDecimal(int64(maxEffectiveBalance[assetID]), decimal)
-	if amount.GTE(efbUnit) {
-		newBalance.Balance += int64(maxEffectiveBalance[assetID])
-	} else {
-		newBalance.Balance += amount.Quo(decimalInt).Int64()
-	}
+	newBalance.Balance += amountInt64
 
 	keyStakerList := types.NativeTokenStakerListKey(assetID)
 	valueStakerList := store.Get(keyStakerList)
@@ -210,7 +221,7 @@ func (k Keeper) UpdateNSTValidatorListForStaker(ctx sdk.Context, assetID, staker
 		}
 	}
 	if !exists {
-		if !amount.IsPositive() {
+		if amountInt64 <= 0 {
 			return errors.New("remove unexist validator")
 		}
 		stakerList.StakerAddrs = append(stakerList.StakerAddrs, stakerAddr)
@@ -244,6 +255,9 @@ func (k Keeper) UpdateNSTValidatorListForStaker(ctx sdk.Context, assetID, staker
 
 // UpdateNSTByBalanceChange updates balance info for staker under native-restaking asset of assetID when its balance changed by slash/refund on the source chain (beacon chain for eth)
 func (k Keeper) UpdateNSTByBalanceChange(ctx sdk.Context, assetID string, rawData []byte, roundID uint64) error {
+	if !IsLimitedChangeNST(assetID) {
+		return types.ErrNSTAssetNotSurpported
+	}
 	_, chainID, _ := assetstypes.ParseID(assetID)
 	if len(rawData) < 32 {
 		return errors.New("length of indicate maps for stakers shoule be exactly 32 bytes")
@@ -252,7 +266,7 @@ func (k Keeper) UpdateNSTByBalanceChange(ctx sdk.Context, assetID string, rawDat
 	if len(sl.StakerAddrs) == 0 {
 		return errors.New("staker list is empty")
 	}
-	stakerChanges, err := parseBalanceChange(rawData, sl)
+	stakerChanges, err := parseBalanceChangeCapped(rawData, sl)
 	if err != nil {
 		return err
 	}
@@ -319,8 +333,10 @@ func (k Keeper) getDecimal(ctx sdk.Context, assetID string) (int, sdkmath.Int, e
 	return int(decimal), sdkmath.NewIntWithDecimal(1, int(decimal)), nil
 }
 
+// TODO: This conversion has limited length for balance change, it suites for beaconchain currently, If we extend to other changes, this method need to be upgrade
+// for value that might be too big leading too long length of the change value, many related changes need to be done since the message size might be too big then
 // parseBalanceChange parses rawData to details of amount change for all stakers relative to native restaking
-func parseBalanceChange(rawData []byte, sl types.StakerList) (map[string]int, error) {
+func parseBalanceChangeCapped(rawData []byte, sl types.StakerList) (map[string]int, error) {
 	// eg. 0100-000011
 	// first part 0100 tells that the effective-balance of staker corresponding to index 2 in StakerList
 	// the lenft part 000011. we use the first 4 bits to tell the length of this number, and it shows as 1 here, the 5th bit is used to tell symbol of the number, 1 means negative, then we can get the abs number indicate by the length. It's -1 here, means effective-balane is 32-1 on beacon chain for now
@@ -391,4 +407,14 @@ func parseBalanceChange(rawData []byte, sl types.StakerList) (map[string]int, er
 // TODO use []byte and assetstypes.GetStakerIDAndAssetID for stakerAddr representation
 func getStakerID(stakerAddr string, chainID uint64) string {
 	return strings.Join([]string{strings.ToLower(stakerAddr), hexutil.EncodeUint64(chainID)}, utils.DelimiterForID)
+}
+
+// IsLimitChangesNST returns that is input assetID corresponding to asset which balance change has a cap limit
+func IsLimitedChangeNST(assetID string) bool {
+	for _, aID := range limitedChangeNST {
+		if aID == assetID {
+			return true
+		}
+	}
+	return false
 }
