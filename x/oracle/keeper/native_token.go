@@ -152,7 +152,7 @@ func (k Keeper) GetAllStakerListAssets(ctx sdk.Context) (ret []types.StakerListA
 
 func (k Keeper) UpdateNSTValidatorListForStaker(ctx sdk.Context, assetID, stakerAddr, validatorPubkey string, amount sdkmath.Int) error {
 	if !IsLimitedChangeNST(assetID) {
-		return types.ErrNSTAssetNotSurpported
+		return types.ErrNSTAssetNotSupported
 	}
 	_, decimalInt, err := k.getDecimal(ctx, assetID)
 	if err != nil {
@@ -259,7 +259,7 @@ func (k Keeper) UpdateNSTValidatorListForStaker(ctx sdk.Context, assetID, staker
 // UpdateNSTByBalanceChange updates balance info for staker under native-restaking asset of assetID when its balance changed by slash/refund on the source chain (beacon chain for eth)
 func (k Keeper) UpdateNSTByBalanceChange(ctx sdk.Context, assetID string, rawData []byte, roundID uint64) error {
 	if !IsLimitedChangeNST(assetID) {
-		return types.ErrNSTAssetNotSurpported
+		return types.ErrNSTAssetNotSupported
 	}
 	_, chainID, _ := assetstypes.ParseID(assetID)
 	if len(rawData) < 32 {
@@ -271,7 +271,7 @@ func (k Keeper) UpdateNSTByBalanceChange(ctx sdk.Context, assetID string, rawDat
 	}
 	stakerChanges, err := parseBalanceChangeCapped(rawData, sl)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse balance changes: %w", err)
 	}
 	store := ctx.KVStore(k.storeKey)
 	for _, stakerAddr := range sl.StakerAddrs {
