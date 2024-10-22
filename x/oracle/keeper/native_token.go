@@ -174,6 +174,7 @@ func (k Keeper) UpdateNSTValidatorListForStaker(ctx sdk.Context, assetID, staker
 		k.cdc.MustUnmarshal(value, stakerInfo)
 		if amountInt64 > 0 {
 			// deopsit add a new validator into staker's validatorList
+			// one validator can only deposit once before it completed withdraw which remove its pubkey form this list. So there's no need to check duplication
 			stakerInfo.ValidatorPubkeyList = append(stakerInfo.ValidatorPubkeyList, validatorPubkey)
 		}
 	}
