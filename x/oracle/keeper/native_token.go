@@ -24,9 +24,10 @@ const (
 	// TODO: we currently support NSTETH only which has capped effective balance for one validator
 	// TODO: this is a bad practice, and for Lz, they have different version of endpoint with different chainID
 	// Do the validation before invoke oracle ralted functions instead of check these hard code ids here.
-	NSTETHAssetIDMainnet = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x65"
-	NSTETHAssetIDHolesky = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x9d19"
-	NSTETHAssetIDSepolia = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x9ce1"
+	NSTETHAssetIDMainnet  = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x7595"
+	NSTETHAssetIDLocalnet = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x65"
+	NSTETHAssetIDHolesky  = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x9d19"
+	NSTETHAssetIDSepolia  = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x9ce1"
 )
 
 var (
