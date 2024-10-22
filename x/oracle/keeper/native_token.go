@@ -31,16 +31,18 @@ const (
 )
 
 var (
-	limitedChangeNST = []string{
-		NSTETHAssetIDMainnet,
-		NSTETHAssetIDHolesky,
-		NSTETHAssetIDSepolia,
+	limitedChangeNST = map[string]bool{
+		NSTETHAssetIDMainnet:  true,
+		NSTETHAssetIDLocalnet: true,
+		NSTETHAssetIDHolesky:  true,
+		NSTETHAssetIDSepolia:  true,
 	}
 
 	maxEffectiveBalance = map[string]int{
-		NSTETHAssetIDMainnet: 32,
-		NSTETHAssetIDHolesky: 32,
-		NSTETHAssetIDSepolia: 32,
+		NSTETHAssetIDMainnet:  32,
+		NSTETHAssetIDLocalnet: 32,
+		NSTETHAssetIDHolesky:  32,
+		NSTETHAssetIDSepolia:  32,
 	}
 )
 
@@ -412,10 +414,5 @@ func getStakerID(stakerAddr string, chainID uint64) string {
 
 // IsLimitChangesNST returns that is input assetID corresponding to asset which balance change has a cap limit
 func IsLimitedChangeNST(assetID string) bool {
-	for _, aID := range limitedChangeNST {
-		if aID == assetID {
-			return true
-		}
-	}
-	return false
+	return limitedChangeNST[assetID]
 }
