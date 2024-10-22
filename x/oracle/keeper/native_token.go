@@ -20,25 +20,27 @@ import (
 // undelegate: update operator's price, operator's totalAmount, operator's totalShare, staker's share
 // msg(refund or slash on beaconChain): update staker's price, operator's price
 
+type NSTETHAssetID string
+
 const (
 	// TODO: we currently support NSTETH only which has capped effective balance for one validator
 	// TODO: this is a bad practice, and for Lz, they have different version of endpoint with different chainID
 	// Do the validation before invoke oracle ralted functions instead of check these hard code ids here.
-	NSTETHAssetIDMainnet  = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x7595"
-	NSTETHAssetIDLocalnet = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x65"
-	NSTETHAssetIDHolesky  = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x9d19"
-	NSTETHAssetIDSepolia  = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x9ce1"
+	NSTETHAssetIDMainnet  NSTETHAssetID = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x7595"
+	NSTETHAssetIDLocalnet NSTETHAssetID = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x65"
+	NSTETHAssetIDHolesky  NSTETHAssetID = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x9d19"
+	NSTETHAssetIDSepolia  NSTETHAssetID = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee_0x9ce1"
 )
 
 var (
-	limitedChangeNST = map[string]bool{
+	limitedChangeNST = map[NSTETHAssetID]bool{
 		NSTETHAssetIDMainnet:  true,
 		NSTETHAssetIDLocalnet: true,
 		NSTETHAssetIDHolesky:  true,
 		NSTETHAssetIDSepolia:  true,
 	}
 
-	maxEffectiveBalance = map[string]int{
+	maxEffectiveBalances = map[NSTETHAssetID]int{
 		NSTETHAssetIDMainnet:  32,
 		NSTETHAssetIDLocalnet: 32,
 		NSTETHAssetIDHolesky:  32,
@@ -298,7 +300,7 @@ func (k Keeper) UpdateNSTByBalanceChange(ctx sdk.Context, assetID string, rawDat
 		}
 		newBalance.Change = types.Action_ACTION_SLASH_REFUND
 		// balance update are based on initial/max effective balance: 32
-		maxBalance := maxEffectiveBalance[assetID] * (len(stakerInfo.ValidatorPubkeyList))
+		maxBalance := maxEffectiveBalance(assetID) * (len(stakerInfo.ValidatorPubkeyList))
 		balance := maxBalance + change
 		// there's one case that this delta might be more than previous Balance
 		// staker's validatorlist: {v1, v2, v3, v5}
@@ -415,5 +417,9 @@ func getStakerID(stakerAddr string, chainID uint64) string {
 
 // IsLimitChangesNST returns that is input assetID corresponding to asset which balance change has a cap limit
 func IsLimitedChangeNST(assetID string) bool {
-	return limitedChangeNST[assetID]
+	return limitedChangeNST[NSTETHAssetID(assetID)]
+}
+
+func maxEffectiveBalance(assetID string) int {
+	return maxEffectiveBalances[NSTETHAssetID(assetID)]
 }
