@@ -1,13 +1,14 @@
 package common
 
 import (
+	"cosmossdk.io/math"
 	sdkmath "cosmossdk.io/math"
 	dogfoodkeeper "github.com/ExocoreNetwork/exocore/x/dogfood/keeper"
 	dogfoodtypes "github.com/ExocoreNetwork/exocore/x/dogfood/types"
 	"github.com/ExocoreNetwork/exocore/x/oracle/types"
 	abci "github.com/cometbft/cometbft/abci/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	stakingTypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
 type Price struct {
@@ -53,9 +54,12 @@ var _ KeeperDogfood = dogfoodkeeper.Keeper{}
 
 type KeeperDogfood = interface {
 	GetLastTotalPower(ctx sdk.Context) sdkmath.Int
-	IterateBondedValidatorsByPower(ctx sdk.Context, fn func(index int64, validator stakingTypes.ValidatorI) (stop bool))
+	IterateBondedValidatorsByPower(ctx sdk.Context, fn func(index int64, validator stakingtypes.ValidatorI) (stop bool))
 	GetValidatorUpdates(ctx sdk.Context) []abci.ValidatorUpdate
-	GetValidatorByConsAddr(ctx sdk.Context, consAddr sdk.ConsAddress) (validator stakingTypes.Validator, found bool)
+	GetValidatorByConsAddr(ctx sdk.Context, consAddr sdk.ConsAddress) (validator stakingtypes.Validator, found bool)
 
 	GetAllExocoreValidators(ctx sdk.Context) (validators []dogfoodtypes.ExocoreValidator)
+	ValidatorByConsAddr(ctx sdk.Context, addr sdk.ConsAddress) stakingtypes.ValidatorI
+	SlashWithInfractionReason(ctx sdk.Context, addr sdk.ConsAddress, infractionHeight, power int64, slashFactor sdk.Dec, infraction stakingtypes.Infraction) math.Int
+	Jail(ctx sdk.Context, addr sdk.ConsAddress)
 }

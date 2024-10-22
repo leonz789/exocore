@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package exocore.oracle.v1;
+
+option go_package = "github.com/ExocoreNetwork/exocore/x/oracle/types";
+
+message ValidatorReportInfo {
+  string address = 1;
+  int64 startHeight = 2;
+  int64 index_offset = 3;
+  int64 missed_rounds_counter = 4;
+}
