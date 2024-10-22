@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ExocoreNetwork/exocore/x/oracle/types"
+	"github.com/cosmos/cosmos-sdk/store/prefix"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	gogotypes "github.com/cosmos/gogoproto/types"
 )
@@ -97,8 +98,52 @@ func (k Keeper) GetMaliciousJailDuration(ctx sdk.Context) (res time.Duration) {
 	return k.GetParams(ctx).Slashing.OracleMaliciousJailDuration
 }
 
+// IterateValidatorReportedInfos iterates over the stored reportInfo
+// and performs a callback function
+func (k Keeper) IterateValidatorReportInfos(ctx sdk.Context, handler func(address string, reportInfo types.ValidatorReportInfo) (stop bool)) {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.ValidatorReportInfoPrefix)
+	iterator := sdk.KVStorePrefixIterator(store, []byte{})
+	for ; iterator.Valid(); iterator.Next() {
+		address := string(iterator.Key())
+		var info types.ValidatorReportInfo
+		k.cdc.MustUnmarshal(iterator.Value(), &info)
+		if handler(address, info) {
+			break
+		}
+	}
+	iterator.Close()
+}
+
+func (k Keeper) IterateValidatorMissedRoundBitArray(ctx sdk.Context, validator string, handler func(index int64, missed bool) (strop bool)) {
+	//	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.SlashingMissedBitArrayPrefix(validator))
+	store := ctx.KVStore(k.storeKey)
+	index := int64(0)
+	// Array may be sparse
+	for ; index < k.GetReportedRoundsWindow(ctx); index++ {
+		var missed gogotypes.BoolValue
+		bz := store.Get(types.SlashingMissedBitArrayKey(validator, uint64(index)))
+		if bz == nil {
+			continue
+		}
+
+		k.cdc.MustUnmarshal(bz, &missed)
+		if handler(index, missed.Value) {
+			break
+		}
+	}
+}
+
+func (k Keeper) GetValidatorMissedRounds(ctx sdk.Context, address string) []*types.MissedRound {
+	missedRounds := []*types.MissedRound{}
+	k.IterateValidatorMissedRoundBitArray(ctx, address, func(index int64, missed bool) (stop bool) {
+		missedRounds = append(missedRounds, types.NewMissedRound(index, missed))
+		return false
+	})
+	return missedRounds
+}
+
 // clearValidatorMissedBlockBitArray deletes every instance of ValidatorMissedBlockBitArray in the store
-func (k Keeper) ClearValidatorMissedBlockBitArray(ctx sdk.Context, validator string) {
+func (k Keeper) ClearValidatorMissedRoundBitArray(ctx sdk.Context, validator string) {
 	store := ctx.KVStore(k.storeKey)
 	iterator := sdk.KVStorePrefixIterator(store, types.SlashingMissedBitArrayPrefix(validator))
 	defer iterator.Close()

@@ -247,7 +247,7 @@ func (am AppModule) EndBlock(ctx sdk.Context, _ abci.RequestEndBlock) []abci.Val
 					am.keeper.JailUntil(ctx, consAddr, jailUntil)
 					reportedInfo.MissedRoundsCounter = 0
 					reportedInfo.IndexOffset = 0
-					am.keeper.ClearValidatorMissedBlockBitArray(ctx, validator)
+					am.keeper.ClearValidatorMissedRoundBitArray(ctx, validator)
 				}
 				continue
 			}
@@ -322,7 +322,7 @@ func (am AppModule) EndBlock(ctx sdk.Context, _ abci.RequestEndBlock) []abci.Val
 					// We need to reset the counter & array so that the validator won't be immediately slashed for miss report info upon rebonding.
 					reportedInfo.MissedRoundsCounter = 0
 					reportedInfo.IndexOffset = 0
-					am.keeper.ClearValidatorMissedBlockBitArray(ctx, validator)
+					am.keeper.ClearValidatorMissedRoundBitArray(ctx, validator)
 
 					logger.Info(
 						"slashing and jailing validator due to liveness fault",

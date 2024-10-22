@@ -1,9 +1,5 @@
 package types
 
-// const (
-// 	SlashingPrefix = "Slashing/"
-// )
-
 var (
 	SlashingPrefix            = []byte("Slashing/")
 	ValidatorReportInfoPrefix = append(SlashingPrefix, []byte("validator/value/")...)
