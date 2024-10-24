@@ -34,20 +34,19 @@ func (k Keeper) GetPrices(
 	var i uint64
 	if nextRoundID <= uint64(common.MaxSizePrices) {
 		i = 1
-		val.PriceList = make([]*types.PriceTimeRound, nextRoundID)
+		val.PriceList = make([]*types.PriceTimeRound, 0, nextRoundID)
 	} else {
 		i = nextRoundID - uint64(common.MaxSizePrices)
-		val.PriceList = make([]*types.PriceTimeRound, common.MaxSizePrices)
+		val.PriceList = make([]*types.PriceTimeRound, 0, common.MaxSizePrices)
 	}
-	// 0 roundId is reserved, expect the roundid corresponds to the slice index
-	val.PriceList[0] = &types.PriceTimeRound{}
 	for ; i < nextRoundID; i++ {
 		b := store.Get(types.PricesRoundKey(i))
-		val.PriceList[i] = &types.PriceTimeRound{}
+		v := &types.PriceTimeRound{}
 		if b != nil {
-			k.cdc.MustUnmarshal(b, val.PriceList[i])
+			k.cdc.MustUnmarshal(b, v)
 			found = true
 		}
+		val.PriceList = append(val.PriceList, v)
 	}
 	return
 }
